@@ -20,7 +20,9 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
+
 import java.net.URL;
+
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -44,19 +46,17 @@ class GameUI {
     private boolean colorMode = false;
     private boolean got2048 = false;
     private boolean lostAfter2048 = false;
-    private final String titleText = "2048";
-    private final int squareSizeScale = 6;
-    private final float titleFontScale = 8.25f;
+    private static final String titleText = "2048";
+    private static final int squareSizeScale = 6;
+    private static final Color background = new Color(187, 173, 160);
+    private static final Color emptySquare = new Color(205, 193, 181);
+    private static final Color twoFourFontColor = new Color(117, 107, 97);
+    private static final Color fontColor = new Color(244, 230, 219);
+    private static final Font font = new Font("Clear Sans", Font.BOLD, 17);
     private int squareSize;
-    private final Color background;
-    private final Color emptySquare;
-    private final Color twoFourFontColor;
-    private final Color fontColor;
-    private final String fontName;
-    private final Font titleFont;
-    private final Font font;
     private final JFrame frame;
     private final JLabel score;
+    private final JLabel highScore;
     private final JLabel time;
     private final JLabel title;
     private final JLabel winState;
@@ -70,20 +70,8 @@ class GameUI {
     private GameUI() {
         /* Minimum Dimensions */
         final int minWindowHeight = 700;
-        final int minWindowWidth = 600;
-        squareSize = minWindowHeight / squareSizeScale;
-
-        /* Colors */
-        background = new Color(187, 173, 160);
-        emptySquare = new Color(205, 193, 181);
-        fontColor = new Color(244, 230, 219);
-        twoFourFontColor = new Color(117, 107, 97);
-        Color buttonColor = new Color(143, 122, 102);
-
-        /* Fonts */
-        fontName = "Clear Sans";
-        titleFont = new Font(fontName, Font.BOLD, 0); // will get scaled anyway
-        font = new Font(fontName, Font.BOLD, 18);
+        final int minWindowWidth = 620;
+        squareSize = (minWindowHeight / squareSizeScale);
 
         /* Main JFrame */
         frame = new JFrame();
@@ -112,10 +100,10 @@ class GameUI {
         /* New Game JButton */
         JButton reset = new JButton("<html><center>New<br>Game</center></html>");
         reset.setPreferredSize(new Dimension(80, 65));
-        reset.setFont(font);
+        reset.setFont(font.deriveFont(18f));
         reset.setFocusPainted(false);
         reset.setContentAreaFilled(false);
-        reset.setBackground(buttonColor);
+        reset.setBackground(new Color(143, 122, 102));
         reset.setForeground(fontColor);
         reset.setOpaque(true);
         reset.setFocusable(false);
@@ -141,7 +129,6 @@ class GameUI {
 
         // Holds 2048 logo text in center
         JPanel titlePanel = new JPanelCustom();
-        titlePanel.setLayout(new FlowLayout(FlowLayout.CENTER));
         titlePanel.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -154,7 +141,7 @@ class GameUI {
 
         // Holds score, time, pause JLabels
         JPanel scoreTimePausePanel = new JPanelCustom();
-        scoreTimePausePanel.setLayout(new GridLayout(3, 1));
+        scoreTimePausePanel.setLayout(new GridLayout(4, 1));
         scoreTimePausePanel.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent mouseEvent) {
@@ -168,15 +155,19 @@ class GameUI {
 
         /* JLabels */
         title = new JLabelCustom(titleText);
-        title.setFont(titleFont);
+        title.setFont(font);
 
         score = new JLabelCustom("Score: 0 ");
+
+        highScore = new JLabelCustom(null);
+        updateHiScoreText();
+
         time = new JLabelCustom("Time: 00:00 ");
         pauseState = new JLabelCustom(" ");
 
         winState = new JLabelCustom(null);
         clearWinText();
-        winState.setFont(new Font(fontName, Font.BOLD, 20));
+        winState.setFont(font.deriveFont(20f));
         winState.setBorder(new EmptyBorder(0, 0, 25, 0));
 
         /* Add components */
@@ -185,6 +176,7 @@ class GameUI {
 
         // add score, time pause labels
         scoreTimePausePanel.add(score);
+        scoreTimePausePanel.add(highScore);
         scoreTimePausePanel.add(time);
         scoreTimePausePanel.add(pauseState);
         topPanel.add(scoreTimePausePanel);
@@ -236,19 +228,19 @@ class GameUI {
                     switch (e.getKeyCode()) {
                         case KeyEvent.VK_UP:
                         case KeyEvent.VK_W:
-                            game.shift(0);
-                            break;
-                        case KeyEvent.VK_LEFT:
-                        case KeyEvent.VK_A:
-                            game.shift(2);
+                            game.shift(Game.Direction.UP);
                             break;
                         case KeyEvent.VK_DOWN:
                         case KeyEvent.VK_S:
-                            game.shift(1);
+                            game.shift(Game.Direction.DOWN);
+                            break;
+                        case KeyEvent.VK_LEFT:
+                        case KeyEvent.VK_A:
+                            game.shift(Game.Direction.LEFT);
                             break;
                         case KeyEvent.VK_RIGHT:
                         case KeyEvent.VK_D:
-                            game.shift(3);
+                            game.shift(Game.Direction.RIGHT);
                             break;
                     }
                     updateAfterMove();
@@ -267,17 +259,9 @@ class GameUI {
                     float x = me.getX() - lastX;
                     float y = me.getY() - lastY;
                     if (Math.abs(y) > Math.abs(x)) {
-                        if (y > 0) { // down
-                            game.shift(1);
-                        } else { // up
-                            game.shift(0);
-                        }
+                        game.shift(y > 0 ? Game.Direction.DOWN : Game.Direction.UP);
                     } else {
-                        if (x > 0) { // right
-                            game.shift(3);
-                        } else { // left
-                            game.shift(2);
-                        }
+                        game.shift(x > 0 ? Game.Direction.RIGHT : Game.Direction.LEFT);
                     }
                     updateAfterMove();
                 }
@@ -308,6 +292,7 @@ class GameUI {
     private void updateAfterMove() {
         board.paintTile();
         score.setText(String.format("Score: %d ", game.getScore()));
+        updateHiScoreText();
         if (!got2048) {
             checkWinGame();
         } else {
@@ -355,8 +340,9 @@ class GameUI {
      */
     private void scaleOnResize(double nHeight) {
         int height = (int) nHeight;
-        title.setFont(this.titleFont.deriveFont(height / titleFontScale));
-        squareSize = height / squareSizeScale;
+        final float titleFontScale = 8.25f;
+        title.setFont(font.deriveFont(height / titleFontScale));
+        squareSize = (height / squareSizeScale);
         if (!colorMode) {
             board.paintTile();
         }
@@ -377,11 +363,16 @@ class GameUI {
             board.refresh();
             secs = 0;
             score.setText("Score: 0 ");
+            updateHiScoreText();
             clearWinText();
             timer.stop();
             time.setText("Time: 00:00 ");
             timer.start();
         }
+    }
+
+    private void updateHiScoreText() {
+        highScore.setText(String.format("High Score: %d", game.getHiScore()));
     }
 
     /**
@@ -474,15 +465,15 @@ class GameUI {
         private final int borderWidthScale = 19;
 
         private Grid() {
-            this.setBackground(background);
             this.setLayout(new GridBagLayout());
+            this.setBackground(background);
             GridBagConstraints gbc = new GridBagConstraints();
-            for (int row = 0; row < 4; row++) {
-                for (int col = 0; col < 4; col++) {
-                    gbc.gridx = col;
-                    gbc.gridy = row;
-                    Square square = new Square(row, col, null);
-                    cells[row][col] = square;
+            for (int r = 0; r < 4; r++) {
+                for (int c = 0; c < 4; c++) {
+                    gbc.gridx = c;
+                    gbc.gridy = r;
+                    Square square = new Square(r, c, null);
+                    cells[r][c] = square;
                     add(square, gbc);
                 }
             }
@@ -493,20 +484,20 @@ class GameUI {
          * Updates color and number of all Squares
          */
         private void paintTile() {
-            for (int row = 0; row < 4; row++) {
-                for (int col = 0; col < 4; col++) {
-                    if (game.getBoard()[row][col] != null) {
-                        Color tileColor = game.getBoard()[row][col].getColor();
+            for (int r = 0; r < 4; r++) {
+                for (int c = 0; c < 4; c++) {
+                    if (game.getBoard()[r][c] != null) {
+                        Color tileColor = game.getBoard()[r][c].getColor();
                         if (colorMode) {
                             tileColor = new Color((int) (Math.random() * 0x1000000));
                         }
-                        cells[row][col].setBackground(tileColor);
-                        cells[row][col].setNum(game.getBoard()[row][col].toString());
+                        cells[r][c].setBackground(tileColor);
+                        cells[r][c].setNum(game.getBoard()[r][c].toString());
                     } else {
-                        cells[row][col].setBackground(emptySquare);
+                        cells[r][c].setBackground(emptySquare);
                     }
-                    cells[row][col].setBorder(new LineBorder(background, squareSize / borderWidthScale));
-                    cells[row][col].repaint();
+                    cells[r][c].setBorder(new LineBorder(background, squareSize / borderWidthScale));
+                    cells[r][c].repaint();
                     this.repaint();
                 }
             }
@@ -516,18 +507,18 @@ class GameUI {
          * Repaints and revalidates each Square
          */
         private void refresh() {
-            for (int row = 0; row < 4; row++) {
-                for (int col = 0; col < 4; col++) {
-                    cells[row][col].revalidate();
-                    cells[row][col].repaint();
+            for (int r = 0; r < 4; r++) {
+                for (int c = 0; c < 4; c++) {
+                    cells[r][c].revalidate();
+                    cells[r][c].repaint();
                 }
             }
         }
     }
 
     public class Square extends JPanel {
-        private final float fontScale = 0.40f; // font is 40% of square size for tiles between 1 and 3 digits
-        private final float fontDecrease = 0.06f; // remove 6% for each increase in number of digits past 3
+        private final float fontScale = 0.42f; // font is 42% of square size for tiles between 1 and 3 digits
+        private final float fontDecrease = 0.075f; // remove 7.5% for each increase in number of digits past 3
         private final int row;
         private final int col;
         private String num;
@@ -558,7 +549,7 @@ class GameUI {
                 if (num.length() > 3) {
                     fontScale -= (num.length() - 3) * fontDecrease;
                 }
-                g2.setFont(new Font(fontName, Font.BOLD, (int) (squareSize * fontScale)));
+                g2.setFont(font.deriveFont(squareSize * fontScale));
 
                 // change font color if it's a two or four
                 g2.setColor(twoFourFontColor);

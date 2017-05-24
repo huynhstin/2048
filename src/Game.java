@@ -1,3 +1,12 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+
 import java.util.Random;
 import java.util.Arrays;
 
@@ -7,28 +16,72 @@ import java.util.Arrays;
  * @author Justin Huynh
  */
 
-
 class Game {
+    enum Direction {
+        UP, DOWN, LEFT, RIGHT
+    }
+
     private final Tile[][] board;
     private final Tile[][] oldBoard;
     private final Random randy;
     private int score;
+    private int hiScore;
+    private static final String scoreLocation = "src/high_score.txt";
+
     Game() {
         board = new Tile[4][4];
         oldBoard = new Tile[4][4];
         score = 0;
         randy = new Random();
-        for (int i = 0; i < 2; i++) {
-            initializeBoard();
+        initializeBoard();
+
+        if (!new File(scoreLocation).exists()) {
+            saveHighScore(); // if the file doesn't exist, then create it
+        }
+        loadHighScore();
+    }
+
+    /**
+     * Writes to 'high_score.txt' to save the high score.
+     */
+    private void saveHighScore() {
+        try (Writer writer = new BufferedWriter(new OutputStreamWriter(
+                new FileOutputStream(scoreLocation), "utf-8"))) {
+            this.hiScore = score;
+            writer.write(String.valueOf(this.hiScore));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
+    /**
+     * Loads the high score from 'high_score.txt'.
+     */
+    private void loadHighScore() {
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(scoreLocation));
+            String num = reader.readLine();
+            this.hiScore = (num == null) ? 0 : Integer.parseInt(num);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    int getHiScore() {
+        return this.hiScore;
+    }
+
+    /**
+     * Loads two tiles on the board to initialize.
+     */
     private void initializeBoard() {
-        int rand = randy.nextInt(16);
-        if (board[rand / 4][rand % 4] == null) {
-            board[rand / 4][rand % 4] = isFour() ? new Tile(true) : new Tile(false);
-        } else {
-            initializeBoard();
+        int toGen = 2;
+        while (toGen > 0) {
+            int rand = randy.nextInt(16);
+            if (board[rand / 4][rand % 4] == null) {
+                board[rand / 4][rand % 4] = new Tile(isFour());
+                toGen--;
+            }
         }
     }
 
@@ -40,10 +93,14 @@ class Game {
         return score;
     }
 
+    /**
+     * Loop through board until you find a space that is 2048.
+     * @return won or not
+     */
     boolean checkWon() {
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                if (board[i][j] != null && board[i][j].getPow() == 11) {
+        for (int r = 0; r < 4; r++) {
+            for (int c = 0; c < 4; c++) {
+                if (board[r][c] != null && board[r][c].getPow() == 11) {
                     return true;
                 }
             }
@@ -51,40 +108,44 @@ class Game {
         return false;
     }
 
+    /**
+     * Check if lost: every tile is filled, and there are no two adjacent tiles
+     *     of the same rank.
+     * @return lost or not
+     */
     boolean checkLost() {
-        int i1;
-        int j1;
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                if (board[i][j] != null) {
-                    i1 = i + 1;
-                    j1 = j;
-                    if (i1 <= 3 && i1 >= 0 && j1 <= 3 && j1 >= 0) {
-                        if (board[i1][j1] != null && board[i][j].getPow() == board[i1][j1].getPow()) {
+        int i;
+        int j;
+        for (int r = 0; r < 4; r++) {
+            for (int c = 0; c < 4; c++) {
+                if (board[r][c] != null) {
+                    i = r + 1;
+                    j = c;
+                    if (i <= 3 && i >= 0 && j <= 3 && j >= 0) {
+                        if (board[i][j] != null && board[r][c].getPow() == board[i][j].getPow()) {
                             return false;
                         }
                     }
-                    i1 = i - 1;
-                    if (i1 <= 3 && i1 >= 0 && j1 <= 3 && j1 >= 0) {
-                        if (board[i1][j1] != null && board[i][j].getPow() == board[i1][j1].getPow()) {
+                    i = r - 1;
+                    if (i <= 3 && i >= 0 && j <= 3 && j >= 0) {
+                        if (board[i][j] != null && board[r][c].getPow() == board[i][j].getPow()) {
                             return false;
                         }
                     }
-                    i1 = i;
-                    j1 = j - 1;
-                    if (i1 <= 3 && i1 >= 0 && j1 <= 3 && j1 >= 0) {
-                        if (board[i1][j1] != null && board[i][j].getPow() == board[i1][j1].getPow()) {
+                    i = r;
+                    j = c - 1;
+                    if (i <= 3 && i >= 0 && j <= 3 && j >= 0) {
+                        if (board[i][j] != null && board[r][c].getPow() == board[i][j].getPow()) {
                             return false;
                         }
                     }
-                    j1 = j + 1;
-                    if (i1 <= 3 && i1 >= 0 && j1 <= 3 && j1 >= 0) {
-                        if (board[i1][j1] != null && board[i][j].getPow() == board[i1][j1].getPow()) {
+                    j = c + 1;
+                    if (i <= 3 && i >= 0 && j <= 3 && j >= 0) {
+                        if (board[i][j] != null && board[r][c].getPow() == board[i][j].getPow()) {
                             return false;
                         }
                     }
-                }
-                else {
+                } else {
                     return false;
                 }
             }
@@ -92,28 +153,41 @@ class Game {
         return true;
     }
 
-    void shift(int direction) {
+    /**
+     * Rotates the board in the desired direction, compress the sub-array,
+     * and rotate back to return to the original orientation.
+     * @param direction direction to move
+     */
+    void shift(Direction direction) {
         rotate(direction);
         for (int i = 0; i < 4; i++) {
             board[i] = compress(board[i]);
         }
         rotate(direction);
-        if (!compare()) {
+        if (!checkChanged()) {
             for (int i = 0; i < 4; i++) {
                 oldBoard[i] = Arrays.copyOf(board[i], 4);
             }
-            fill();
+            spawn();
+        }
+        if (hiScore <= score) {
+            saveHighScore();
         }
     }
 
-    private boolean compare() {
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                if (board[i][j] != oldBoard[i][j]) {
+    /**
+     * Checks if any tiles would actually move if you were to shift.
+     * Used to ensure that tiles don't get spawned when they shouldn't.
+     * @return true if oldBoard and board would be the same.
+     */
+    private boolean checkChanged() {
+        for (int r = 0; r < 4; r++) {
+            for (int c = 0; c < 4; c++) {
+                if (board[r][c] != oldBoard[r][c]) {
                     return false;
                 }
-                if (board[i][j] != null && oldBoard[i][j] != null) {
-                    if (board[i][j].getPow() != oldBoard[i][j].getPow()) {
+                if (board[r][c] != null && oldBoard[r][c] != null) {
+                    if (board[r][c].getPow() != oldBoard[r][c].getPow()) {
                         return false;
                     }
                 }
@@ -123,105 +197,119 @@ class Game {
     }
 
     /**
-     * [x][y] = array of size x of y-arrays
-     * [3][4] =[1, 2, 3, 4]
-     * [5, 6, 7, 8]
-     * [9, 0, 1, 2]
-     * @param direction:
-     *  0 = up
-     *  1 = down
-     *  2 = left
-     *  3 = right
+     * When right shifting, mirror the array.
+     * When shifting up, flip around the (x, x) diagonal.
+     * When shifting down, flip around the (4-x, x) diagonal.
+     * Left shift is default orientation, so don't need to do anything.
+     * @param direction direction to move
      */
-    private void rotate(int direction) {
+    private void rotate(Direction direction) {
         Tile temp;
         switch (direction) {
-            case 0: //invert around (x, x) axis
-                for (int i = 1; i < 4; i++) {
-                    for (int j = 0; j < i; j++) {
-                        temp = board[i][j];
-                        board[i][j] = board[j][i];
-                        board[j][i] = temp;
+            case UP: // invert around (x, x) axis
+                for (int r = 1; r < 4; r++) {
+                    for (int c = 0; c < r; c++) {
+                        temp = board[r][c];
+                        board[r][c] = board[c][r];
+                        board[c][r] = temp;
                     }
                 }
                 break;
-            case 1: //invert around (4-x, x) axis
-                for (int i = 0; i < 4; i++) {
-                    for (int j = 0; j < (3 - i); j++) {
-                        temp = board[i][j];
-                        board[i][j]= board[3 - j][3 - i];
-                        board[3 - j][3 - i] = temp;
+            case DOWN: // invert around (4-x, x) axis
+                for (int r = 0; r < 4; r++) {
+                    for (int c = 0; c < (3 - r); c++) {
+                        temp = board[r][c];
+                        board[r][c]= board[3 - c][3 - r];
+                        board[3 - c][3 - r] = temp;
                     }
                 }
                 break;
-            case 3:
-                for (int i = 0; i < 4; i++) {
-                    temp = board[i][0];
-                    board[i][0] = board[i][3];
-                    board[i][3] = temp;
-                    temp = board[i][1];
-                    board[i][1] = board[i][2];
-                    board[i][2] = temp;
+            case RIGHT:
+                for (int r = 0; r < 4; r++) {
+                    temp = board[r][0];
+                    board[r][0] = board[r][3];
+                    board[r][3] = temp;
+                    temp = board[r][1];
+                    board[r][1] = board[r][2];
+                    board[r][2] = temp;
                 }
+                break;
+            case LEFT:
                 break;
         }
     }
 
-    private Tile[] shorten(Tile[] vec) {
+    /**
+     * Remove all the empty spaces between tiles in a sub-array
+     * @param sub sub-array to remove spaces from
+     * @return shortened array
+     */
+    private Tile[] shorten(Tile[] sub) {
         for (int j = 0; j < 4; j++) {
-            if (vec[j] == null) {
+            if (sub[j] == null) {
                 for (int i = j + 1; i < 4; i++) {
-                    if (vec[i] != null) {
-                        vec[j] = vec[i];
-                        vec[i] = null;
+                    if (sub[i] != null) {
+                        sub[j] = sub[i];
+                        sub[i] = null;
                         break;
                     }
                 }
             }
         }
-        return vec;
+        return sub;
     }
 
-    private Tile[] compress(Tile[] vec) {
-        vec = shorten(vec);
+    /**
+     * Takes a row of tiles and compresses it in the negative direction.
+     * First removes any empty space, combines tiles, and removes space again.
+     * @param sub row to compress
+     * @return compressed sub-array
+     */
+    private Tile[] compress(Tile[] sub) {
+        sub = shorten(sub);
         for (int i = 0; i < 3; i++) {
-            if (vec[i] != null) {
-                if (vec[i + 1] != null && vec[i + 1].getPow() == vec[i].getPow()) {
-                    vec[i + 1] = null;
-                    vec[i].increasePow();
-                    score += vec[i].value();
+            if (sub[i] != null) {
+                if (sub[i + 1] != null && sub[i + 1].getPow() == sub[i].getPow()) {
+                    sub[i + 1] = null;
+                    sub[i].increasePow();
+                    score += sub[i].value();
                 }
             }
         }
-        vec = shorten(vec);
-        return vec;
+        sub = shorten(sub);
+        return sub;
     }
 
+    /**
+     * Generates a 10 percent chance
+     */
     private boolean isFour() {
-        // Generate 10% chance
         return randy.nextInt(10) == 5;
     }
 
-    private void fill() {
+    /**
+     * Spawns a single tile, if possible.
+     */
+    private void spawn() {
         int empty = 0;
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                if (board[i][j] == null) {
+        for (int r = 0; r < 4; r++) {
+            for (int c = 0; c < 4; c++) {
+                if (board[r][c] == null) { // count the remaining empty spaces
                     empty++;
                 }
             }
         }
-        if (empty == 0) {
+        if (empty == 0) { // make sure that it's still possible to spawn space
             return;
         }
-        int c = randy.nextInt(empty);
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                if (board[i][j] == null && c > 0) {
-                    c--;
+        int rand = randy.nextInt(empty);
+        for (int r = 0; r < 4; r++) {
+            for (int c = 0; c < 4; c++) {
+                if (board[r][c] == null && rand > 0) {
+                    rand--;
                 }
-                if (board[i][j] == null && c == 0) {
-                    board[i][j] = isFour() ? new Tile(true) : new Tile(false);
+                if (board[r][c] == null && rand == 0) {
+                    board[r][c] = new Tile(isFour());
                     return;
                 }
             }
